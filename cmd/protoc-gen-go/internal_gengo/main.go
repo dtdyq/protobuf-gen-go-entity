@@ -357,6 +357,7 @@ func genMessageFields(g *protogen.GeneratedFile, f *fileInfo, m *messageInfo) {
 		fc += 1
 	}
 	GenerateMsgFieldDirty(g, fc)
+	GenerateMsgFieldProtoReflect(g, fc)
 	GenerateParentFields(g, fc)
 }
 

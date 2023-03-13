@@ -70,6 +70,14 @@ func GenerateMsgFieldDirty(g *protogen.GeneratedFile, fc int) {
 	parseAndExec(g, templateStructDirtyField, TemplateCtx{FieldCount: fc})
 }
 
+const templateStructProtoReflectField = `
+_prm protoreflect.Message
+`
+
+func GenerateMsgFieldProtoReflect(g *protogen.GeneratedFile, fc int) {
+	parseAndExec(g, templateStructProtoReflectField, TemplateCtx{FieldCount: fc})
+}
+
 const templateStructParentMethodMarkDirty = `
 func (x *{{.StructName}}) MarkDirty(idx int ,dt byte) {
 	if x != nil {
@@ -158,10 +166,52 @@ func GenerateMsgParentMethod(g *protogen.GeneratedFile, f *fileInfo, m *messageI
 	GenerateMsgDirtyOperationMethod(g, f, m)
 }
 
+const templateStructGetProtoReflectMethod = `
+func (x *{{.StructName}}) GetProtoReflect() protoreflect.Message {
+	if x._prm == nil {
+		x._prm = x.ProtoReflect()
+	}
+	return x._prm
+}
+`
+
 func GenerateMsgDirtyOperationMethod(g *protogen.GeneratedFile, f *fileInfo, m *messageInfo) {
 	// collect dirty field
 	preLine(g)
 	// ===========================================================
+
+	parseAndExec(g, templateStructGetProtoReflectMethod, TemplateCtx{StructName: m.GoIdent.GoName})
+	// ===========================================================
+
+	g.P(fmt.Sprintf("func (x *%s) hasField(fn protoreflect.Name) bool {", m.GoIdent.GoName))
+	g.P("return x.GetProtoReflect().Has(x.GetProtoReflect().Descriptor().Fields().ByName(fn))")
+	g.P("}")
+	// ===========================================================
+
+	g.P(fmt.Sprintf("func (x *%s) MergeFrom(s *%s) {", m.GoIdent.GoName, m.GoIdent.GoName))
+	g.P(fmt.Sprintf("if x == nil || s == nil {"))
+	g.P("return")
+	g.P("}")
+
+	for _, field := range getFieldsNoDeletedKey(m) {
+		//goType, _ := fieldGoType(g, f, field)
+
+		switch getFieldCategory(field) {
+		case Basic:
+			g.P(fmt.Sprintf("if s.hasField(`%s`) {", field.GoName))
+			g.P(fmt.Sprintf("x.Set%s(s.Get%s())", field.GoName, field.GoName))
+			g.P("}")
+		case StructField:
+			g.P(fmt.Sprintf("if s.hasField(`%s`) {", field.GoName))
+			g.P(fmt.Sprintf("x.Get%s().MergeFrom(s.Get%s())", field.GoName, field.GoName))
+			g.P("}")
+		}
+	}
+
+	g.P("}")
+
+	// ===========================================================
+
 	g.P(fmt.Sprintf("func (x *%s) IsDirty() bool {", m.GoIdent.GoName))
 	g.P("for _,b := range x._dirty_flag {")
 	g.P("if b > 0 {")
