@@ -66,7 +66,8 @@ type goImportPath interface {
 
 // GenerateFile generates the contents of a .pb.go file.
 func GenerateFile(gen *protogen.Plugin, file *protogen.File) *protogen.GeneratedFile {
-	filename := file.GeneratedFilenamePrefix + ".pb.go"
+	// todo change point
+	filename := strings.ReplaceAll(file.GeneratedFilenamePrefix, "entity_", "entity.") + ".pb.go"
 	g := gen.NewGeneratedFile(filename, file.GoImportPath)
 	f := newFileInfo(file)
 
@@ -77,7 +78,7 @@ func GenerateFile(gen *protogen.Plugin, file *protogen.File) *protogen.Generated
 	packageDoc := genPackageKnownComment(f)
 	g.P(packageDoc, "package ", f.GoPackageName)
 	g.P()
-
+	g.P(`import "github.com/golang/protobuf/proto"`)
 	// Emit a static check that enforces a minimum version of the proto package.
 	if GenerateVersionMarkers {
 		g.P("const (")
@@ -320,7 +321,8 @@ func genMessage(g *protogen.GeneratedFile, f *fileInfo, m *messageInfo) {
 	if m.Desc.IsMapEntry() {
 		return
 	}
-
+	// todo change point
+	GenerateMsgMapFieldsDeleted(f, m)
 	// Message type declaration.
 	g.Annotate(m.GoIdent.GoName, m.Location)
 	leadingComments := appendDeprecationSuffix(m.Comments.Leading,
@@ -332,6 +334,10 @@ func genMessage(g *protogen.GeneratedFile, f *fileInfo, m *messageInfo) {
 	g.P("}")
 	g.P()
 
+	//todo change point
+	GenerateMsgParentMethod(g, f, m)
+	GenerateMsgFieldMethod(g, f, m)
+
 	genMessageKnownFunctions(g, f, m)
 	genMessageDefaultDecls(g, f, m)
 	genMessageMethods(g, f, m)
@@ -341,9 +347,17 @@ func genMessage(g *protogen.GeneratedFile, f *fileInfo, m *messageInfo) {
 func genMessageFields(g *protogen.GeneratedFile, f *fileInfo, m *messageInfo) {
 	sf := f.allMessageFieldsByPtr[m]
 	genMessageInternalFields(g, f, m, sf)
+	// todo change point
 	for _, field := range m.Fields {
 		genMessageField(g, f, m, field, sf)
 	}
+	var fc = 0
+	for _, field := range getFieldsNoDeletedKey(m) {
+		GenerateMsgFieldIdx(g, field)
+		fc += 1
+	}
+	GenerateMsgFieldDirty(g, fc)
+	GenerateParentFields(g, fc)
 }
 
 func genMessageInternalFields(g *protogen.GeneratedFile, f *fileInfo, m *messageInfo, sf *structFields) {
@@ -500,8 +514,9 @@ func genMessageDefaultDecls(g *protogen.GeneratedFile, f *fileInfo, m *messageIn
 
 func genMessageMethods(g *protogen.GeneratedFile, f *fileInfo, m *messageInfo) {
 	genMessageBaseMethods(g, f, m)
-	genMessageGetterMethods(g, f, m)
-	genMessageSetterMethods(g, f, m)
+	// todo change point
+	//genMessageGetterMethods(g, f, m)
+	//genMessageSetterMethods(g, f, m)
 }
 
 func genMessageBaseMethods(g *protogen.GeneratedFile, f *fileInfo, m *messageInfo) {

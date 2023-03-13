@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	gengo "google.golang.org/protobuf/cmd/protoc-gen-go/internal_gengo"
 	"google.golang.org/protobuf/compiler/protogen"
@@ -46,7 +47,8 @@ func main() {
 				"See " + grpcDocURL + " for more information.")
 		}
 		for _, f := range gen.Files {
-			if f.Generate {
+			// todo change point
+			if f.Generate && strings.HasPrefix(f.GeneratedFilenamePrefix, "entity_") {
 				gengo.GenerateFile(gen, f)
 			}
 		}
